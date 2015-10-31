@@ -26,12 +26,11 @@ class MainPage extends BaseView
       @data = data
       m.redraw()
 
-  content: (ctrl) ->
-    console.log(ctrl)
-    if ctrl.data
+  content: ->
+    if @data
       m 'pre',
-        m 'code', JSON.stringify(ctrl.data, null, 2)
-    else if ctrl.error
-      m '.error', ctrl.error
+        m 'code', JSON.stringify(@data, null, 2)
+    else if @error
+      m '.error', @error
     else
-      m '.progress', "Loading ... #{ctrl.progress}"
+      m '.progress', "Loading ... #{@progress}"
