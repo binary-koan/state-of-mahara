@@ -6,7 +6,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-    "js": "browserify -t coffeeify --extension=\".coffee\" -o public/bundle.js public/scripts/main.coffee"
+    "_browserify": "browserify -t coffeeify --extension=\".coffee\"",
+    "jsmain": "npm run _browserify -- -o public/bundle.js public/scripts/main.coffee",
+    "jsworker": "npm run _browserify -- -o public/worker.js public/scripts/worker.coffee",
+    "js": "npm run jsmain && npm run jsworker"
   },
   "author": "Jono Mingard <reason.koan@gmail.com>",
   "license": "MIT",
