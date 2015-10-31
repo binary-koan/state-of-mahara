@@ -13,7 +13,7 @@ allFromFile = (revision, callback) ->
 
 exports.findData = getLatestData = (revision, callback) ->
   filename = filenameForRevision(revision)
-  fs.exists filename, (err, exists) ->
+  fs.exists filename, (exists) ->
     if exists
       allFromFile revision, callback
     else
@@ -23,7 +23,11 @@ exports.findLatestRevision = findLatestRevision = (callback) ->
   baseDb.findOne { key: 'revisions' }, (err, doc) -> callback doc?.latest
 
 exports.save = (revision, data, callback) ->
-  db = new Datastore(filename: filenameForRevision(revision), autoload: true)
-  db.insert(data, callback)
+  filename = filenameForRevision(revision)
+  fs.unlinkSync(filename) if fs.existsSync(filename)
+
+  db = new Datastore(filename: filename, autoload: true)
+  db.insert data, ->
+    baseDb.update { key: 'revisions' }, { $set: { latest: revision } }, upsert: true, callback
 
 exports.DATAROOT = DATAROOT

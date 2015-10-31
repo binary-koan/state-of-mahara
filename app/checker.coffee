@@ -69,7 +69,8 @@ class Checker
           callback()
 
   _alreadyClonedRevision: ->
-    fs.readFileSync("#{MAHARA_DIR}/.git/refs/heads/master", 'utf8') == @_revision
+    filename = "#{MAHARA_DIR}/.git/refs/heads/master"
+    fs.existsSync(filename) && fs.readFileSync(filename, 'utf8') == @_revision
 
   _checkCurrentClone: ->
     checkers =
