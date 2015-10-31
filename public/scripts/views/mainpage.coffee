@@ -22,11 +22,17 @@ class DataManager extends SocketManager
     @_checkers = {}
     @_current = { checker: null, data: null }
 
+  revision: -> @_revision
   checkers: -> Object.keys(@_checkers)
   count: (checker) -> @_checkers[checker]
-  data: (checker) -> @_current.checker == checker && @_current.data
+  data: (checker) ->
+    if @_current.checker == checker && @_current.data
+      @_current.data
+    else
+      []
 
   load: (checker) -> @emit 'load', { checker }
+  clearCurrentData: -> @_current = { checker: null, data: null }
 
   onFailed: ({ error }) ->
     @_controller.handleFail(error)
@@ -58,32 +64,40 @@ class MainPage extends BaseView
     @_vm =
       error: null
       progress: 'Waiting for connection'
+      toggleGroup: (checker) =>
+        if @_data.data(checker).length
+          @_data.clearCurrentData()
+          @update()
+        else
+          @_data.load(checker)
 
   handleFail: (error) ->
     @_vm.error = error
-    update()
+    @update()
 
   handleProgress: (progress) ->
     @_vm.progress = progress
-    update()
+    @update()
 
   update: -> m.redraw()
 
   content: ->
     checkers = @_data.checkers()
+    byFile = (o1, o2) -> o1.file.localeCompare(o2.file)
 
     if @_vm.error
       m '.message.error', @_vm.error
     else if !checkers.length
       m '.message.progress', @_vm.progress
     else
-      checkers.map (checker) =>
-        data = @_data.data(checker) || []
-
-        [
-          m 'button.block', onclick: @_data.load.bind(@_data, checker), [
-            checker, m('span.count', @_data.count(checker))
+      [
+        m 'h1', @_data.revision()
+        checkers.sort().map (checker) =>
+          [
+            m 'button.accordion-header', onclick: @_vm.toggleGroup.bind(null, checker), [
+              m('span', checker), m('span.badge', @_data.count(checker))
+            ]
+            m 'ul.data', @_data.data(checker).sort(byFile).map (item) ->
+              m 'li', JSON.stringify(item)
           ]
-          m 'ul.data', data.map (item) ->
-            m 'li', JSON.stringify(item)
-        ]
+      ]

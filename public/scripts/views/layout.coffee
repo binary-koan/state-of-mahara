@@ -2,4 +2,4 @@ m = require 'mithril'
 
 module.exports =
 mainLayout = (content) ->
-  m '.container', content
+  m '.container', m('.row', m('.twelve.columns', content))

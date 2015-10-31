@@ -12,3 +12,22 @@
   border: 1px solid #f00;
   background: #f88;
 }
+
+button.accordion-header {
+  display: block;
+  width: 100%;
+  text-align: left;
+}
+
+button.accordion-header span {
+  float: left;
+}
+
+button.accordion-header span.badge {
+  display: inline-block;
+  float: right;
+}
+
+ul.data li {
+  list-style-type: none;
+}
