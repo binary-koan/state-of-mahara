@@ -33,4 +33,8 @@ io.on 'connection', (socket) ->
     model.getCheckers currentRevision, (checkers) ->
       socket.emit 'checkers', { checkers }
 
+  socket.on 'load', ({ checker }) ->
+    model.findData currentRevision, checker, (data) ->
+      socket.emit 'data', { checker, data }
+
 server.listen 3000
