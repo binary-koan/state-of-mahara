@@ -15,18 +15,19 @@ class MainPage extends BaseView
     socket = io.connect window.location.href
 
     socket.on 'failed', (data) =>
-      ctrl.error = data.error || 'Unspecified error'
+      @error = data.error || 'Unspecified error'
       m.redraw()
 
     socket.on 'progress', (data) =>
-      ctrl.progress = data.progress
+      @progress = data.progress
       m.redraw()
 
     socket.on 'data', (data) =>
-      ctrl.data = data
+      @data = data
       m.redraw()
 
   content: (ctrl) ->
+    console.log(ctrl)
     if ctrl.data
       m 'pre',
         m 'code', JSON.stringify(ctrl.data, null, 2)
