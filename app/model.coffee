@@ -1,7 +1,8 @@
 fs = require 'fs'
+path = require 'path'
 Datastore = require 'nedb'
 
-DATAROOT = process.env.OPENSHIFT_DATA_DIR || "#{__dirname}/../.data"
+DATAROOT = path.resolve(process.env.OPENSHIFT_DATA_DIR || "#{__dirname}/../.data")
 baseDb = new Datastore(filename: DATAROOT + '/db/data.db', autoload: true)
 
 filenameForRevision = (revision) -> "#{DATAROOT}/db/#{revision}.db"

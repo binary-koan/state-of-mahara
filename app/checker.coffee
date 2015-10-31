@@ -8,7 +8,7 @@ rimraf = require 'rimraf'
 
 model = require './model'
 
-MAHARA_DIR = "#{model.DATAROOT}/mahara"
+MAHARA_DIR = path.resolve("#{model.DATAROOT}/mahara")
 
 module.exports =
 class Checker
@@ -73,7 +73,7 @@ class Checker
       fs.readFile path.join(root, stats.name), 'utf8', (err, contents) =>
         filename = path.join(root, stats.name).replace MAHARA_DIR, ''
         for name, checker of checkers
-          @_addData name, checker(stats, contents)
+          @_addData name, filename, checker(stats, contents)
 
         files += 1
         @_invokeCallbacks(progress: "Scanning file #{files}")
@@ -82,10 +82,10 @@ class Checker
     walker.on 'end', =>
       model.save revision, @_data, @_invokeCallbacks.bind(this, data)
 
-  _addData: (name, result) ->
-    if result.length > 0
+  _addData: (checker, filename, result) ->
+    if result && result.length > 0
       for item in result
-        @_data.push assign({ checker: name, file: filename }, item)
+        @_data.push assign({ checker: checker, file: filename }, item)
 
   _invokeCallbacks: (data) ->
     console.log(@_callbacks)
