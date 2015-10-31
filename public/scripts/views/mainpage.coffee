@@ -1,78 +1,89 @@
 m = require 'mithril'
 
-AbstractWorker = require '../util/worker'
 BaseView = require './base'
 mainLayout = require './layout'
 
-class DataManager extends AbstractWorker
-  constructor: ->
-    super new Worker('/worker.js')
-    @_checkers = []
-    @_currentChecker = null
-    @_currentData = null
+class SocketManager
+  constructor: ({ listen }) ->
+    @_socket = io.connect(window.location.href)
+    for event in listen
+      fn = 'on' + event.substr(0, 1).toUpperCase() + event.substr(1)
+      @_socket.on event, @[fn].bind(this)
 
-    @_dataLoadedCallback = null
+  emit: (event, data) ->
+    @_socket.emit event, data
 
-  checkers: -> @_checkers
-  currentChecker: -> @_currentChecker
-  currentData: -> @_currentData
+class DataManager extends SocketManager
+  constructor: (controller) ->
+    super listen: [ 'failed', 'progress', 'ready', 'checkers', 'data' ]
+    @_controller = controller
 
-  dataLoaded: (data) ->
-    @postMessage 'dataLoaded', { data }
+    @_revision = null
+    @_checkers = {}
+    @_current = { checker: null, data: null }
 
-  getData: (checker, callback) ->
-    @_dataLoadedCallback = callback
-    @postMessage 'getData', checker: checker
+  checkers: -> Object.keys(@_checkers)
+  count: (checker) -> @_checkers[checker]
+  data: (checker) -> @_current.checker == checker && @_current.data
 
-  onDatabaseReady: ({ checkers }) ->
+  load: (checker) -> @emit 'load', { checker }
+
+  onFailed: ({ error }) ->
+    @_controller.handleFail(error)
+
+  onProgress: ({ progress }) ->
+    @_controller.handleProgress(progress)
+
+  onReady: ({ revision }) ->
+    console.log('revision: ' + revision)
+    @_revision = revision
+    @emit 'getCheckers'
+    @_controller.update()
+
+  onCheckers: ({ checkers }) ->
     @_checkers = checkers
-    m.redraw()
+    @_controller.update()
 
   onData: ({ checker, data }) ->
-    @_currentData = data
-    @_dataLoadedCallback() if @_dataLoadedCallback
+    @_current = { checker, data }
+    @_controller.update()
 
 module.exports =
 class MainPage extends BaseView
   constructor: ->
     super mainLayout
-    @worker = new Worker('/worker.js')
 
-    @error = null
-    @progress = 'Waiting for connection'
-    @dataManager = new DataManager()
+    @_data = new DataManager(this)
+    @_data.emit 'getLatest'
+    @_vm =
+      error: null
+      progress: 'Waiting for connection'
 
-    @openChecker = null
-    @setOpenChecker = (checker) ->
-      @openChecker = checker
-      @dataManager.getData checker, -> m.redraw()
+  handleFail: (error) ->
+    @_vm.error = error
+    update()
 
-    socket = io.connect window.location.href
+  handleProgress: (progress) ->
+    @_vm.progress = progress
+    update()
 
-    socket.on 'failed', (data) =>
-      @error = data.error || 'Unspecified error'
-      m.redraw()
-
-    socket.on 'progress', (data) =>
-      @progress = data.progress
-      m.redraw()
-
-    socket.on 'data', (data) =>
-      @dataManager.dataLoaded data
+  update: -> m.redraw()
 
   content: ->
-    checkers = Array.from(@dataManager.checkers())
+    checkers = @_data.checkers()
 
-    [
-      if @error
-        m '.error', @error
-      else if !checkers.length
-        m '.progress', @progress
+    if @_vm.error
+      m '.message.error', @_vm.error
+    else if !checkers.length
+      m '.message.progress', @_vm.progress
+    else
+      checkers.map (checker) =>
+        data = @_data.data(checker) || []
 
-      checkers.map (checker) => [
-        m 'button', { onclick: @setOpenChecker.bind(this, checker) }, checker
-        if checker == @openChecker && @dataManager.currentData()
-          m 'ul', @dataManager.currentData().map (item) ->
+        [
+          m 'button.block', onclick: @_data.load.bind(@_data, checker), [
+            checker, m('span.count', @_data.count(checker))
+          ]
+          m 'ul.data', data.map (item) ->
             m 'li', JSON.stringify(item)
-      ]
-    ]
+        ]

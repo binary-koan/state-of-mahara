@@ -1,0 +1,14 @@
+.message {
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.message.progress {
+  border: 1px solid #bbb;
+  background: #eee;
+}
+
+.message.error {
+  border: 1px solid #f00;
+  background: #f88;
+}

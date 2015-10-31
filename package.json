@@ -7,9 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
     "_browserify": "browserify -t coffeeify --extension=\".coffee\"",
-    "jsmain": "npm run _browserify -- -o public/bundle.js public/scripts/main.coffee",
-    "jsworker": "npm run _browserify -- -o public/worker.js public/scripts/worker.coffee",
-    "js": "npm run jsmain && npm run jsworker"
+    "js": "npm run _browserify -- -o public/bundle.js public/scripts/main.coffee"
   },
   "author": "Jono Mingard <reason.koan@gmail.com>",
   "license": "MIT",

@@ -12,31 +12,36 @@ MAHARA_DIR = path.resolve("#{model.DATAROOT}/mahara")
 
 module.exports =
 class Checker
-  @instance: null
+  @instance = null
 
-  @getLatestResults: (callbacks) ->
-    callbacks = [callbacks] unless isArray(callbacks)
-    model.findLatestRevision (rev) ->
-      model.findData rev, (data) ->
-        if data
-          callback(data) for callback in callbacks
-        else
-          Checker.update(callbacks)
-
-  @update: (callbacks) ->
-    callbacks = [callbacks] unless isArray(callbacks)
+  @run: ({ forceUpdate, callback }) ->
+    callbacks = [callback]
     if Checker.instance && !Checker.instance.complete
       Checker.instance.addCallbacks(callbacks)
     else
-      Checker.instance = new Checker(callbacks)
+      Checker.instance = new Checker(callbacks, { forceUpdate })
 
-  constructor: (callbacks) ->
+  constructor: (callbacks, { forceUpdate }) ->
     @_callbacks = callbacks
     @_data = []
-    @_start()
+
+    if forceUpdate
+      @_start()
+    else
+      @_checkLatest()
 
   addCallbacks: (callbacks) ->
     @_callbacks = @_callbacks.concat callbacks
+
+  _checkLatest: ->
+    model.findLatestRevision (rev) =>
+      @_revision = rev
+
+      model.findData rev, undefined, (data) =>
+        if data
+          @_finish()
+        else
+          @_start()
 
   _start: ->
     request {
@@ -45,14 +50,14 @@ class Checker
     }, (err, response, body) =>
       result = attempt(JSON.parse, body)
       if isError(result)
-        @_finish(error: 'Error parsing JSON: ' + result)
+        @_finish('Error parsing JSON: ' + result)
 
       @_checkRevision(result)
 
   _checkRevision: (result) ->
     @_revision = result.object?.sha
     if not @_revision
-      @_finish(error: 'Request for latest revision failed')
+      @_finish('Request for latest revision failed')
     else if @_alreadyClonedRevision()
       @_checkCurrentClone()
     else
@@ -85,11 +90,11 @@ class Checker
           @_addData name, filename, checker(stats, contents)
 
         files += 1
-        @_invokeCallbacks(progress: "Scanning file #{files}")
+        @_invokeCallbacks(progress: "Scanning file #{files}") if files % 100 == 0
         next()
 
     walker.on 'end', =>
-      model.save @_revision, @_data, @_finish.bind(this, @_data)
+      model.save @_revision, @_data, @_finish.bind(this)
 
   _addData: (checker, filename, result) ->
     if result && result.length > 0
@@ -100,6 +105,9 @@ class Checker
     console.log(@_callbacks)
     callback(data) for callback in @_callbacks
 
-  _finish: (data) ->
-    @_invokeCallbacks data
+  _finish: (err) ->
+    if err
+      @_invokeCallbacks error: err
+    else
+      @_invokeCallbacks complete: true, revision: @_revision
     @_complete = true
