@@ -1,6 +1,6 @@
 { exec } = require 'child_process'
 fs = require 'fs'
-{ assign, attempt, isArray } = require 'lodash'
+{ assign, attempt, isArray, isError } = require 'lodash'
 path = require 'path'
 request = require 'request'
 rimraf = require 'rimraf'
@@ -25,7 +25,7 @@ class Checker
 
   @update: (callbacks) ->
     callbacks = [callbacks] unless isArray(callbacks)
-    if Checker.instance
+    if Checker.instance && !Checker.instance.complete
       Checker.instance.addCallbacks(callbacks)
     else
       Checker.instance = new Checker(callbacks)
@@ -43,14 +43,22 @@ class Checker
       url: 'https://api.github.com/repos/MaharaProject/mahara/git/refs/heads/master'
       headers: { 'User-Agent': 'request' }
     }, (err, response, body) =>
-      sha = attempt(JSON.parse(body))?.object?.sha
-      @_cloneAndCheck(sha || error: 'Request for latest revision failed')
+      result = attempt(JSON.parse, body)
+      if isError(result)
+        @_finish(error: 'Error parsing JSON: ' + result)
 
-  _cloneAndCheck: (revision, callback) ->
-    if @_alreadyClonedRevision(revision)
+      @_checkRevision(result)
+
+  _checkRevision: (result) ->
+    @_revision = result.object?.sha
+    if not @_revision
+      @_finish(error: 'Request for latest revision failed')
+    else if @_alreadyClonedRevision()
       @_checkCurrentClone()
-      return
+    else
+      @_cloneLatest => @_checkCurrentClone()
 
+  _cloneLatest: (callback) ->
     rimraf MAHARA_DIR, =>
       @_invokeCallbacks(progress: 'Cloning Mahara')
 
@@ -58,10 +66,10 @@ class Checker
         if err
           @_invokeCallbacks(error: "git clone failed. STDOUT #{stdout}; STDERR #{stderr}")
         else
-          @_checkCurrentClone()
+          callback()
 
-  _alreadyClonedRevision: (revision) ->
-    fs.readFileSync("#{MAHARA_DIR}/.git/refs/heads/master", 'utf8') == revision
+  _alreadyClonedRevision: ->
+    fs.readFileSync("#{MAHARA_DIR}/.git/refs/heads/master", 'utf8') == @_revision
 
   _checkCurrentClone: ->
     checkers =
@@ -80,7 +88,7 @@ class Checker
         next()
 
     walker.on 'end', =>
-      model.save revision, @_data, @_invokeCallbacks.bind(this, data)
+      model.save @_revision, @_data, @_finish.bind(this, @_data)
 
   _addData: (checker, filename, result) ->
     if result && result.length > 0
@@ -90,3 +98,7 @@ class Checker
   _invokeCallbacks: (data) ->
     console.log(@_callbacks)
     callback(data) for callback in @_callbacks
+
+  _finish: (data) ->
+    @_invokeCallbacks data
+    @_complete = true
