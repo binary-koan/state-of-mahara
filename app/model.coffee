@@ -34,7 +34,6 @@ exports.getCheckers = (revision, callback) ->
 
   remaining = checkerNames.length
   countCallback = (checker, err, count) ->
-    console.log(arguments)
     checkerCounts[checker] = count
     remaining -= 1
     if remaining == 0

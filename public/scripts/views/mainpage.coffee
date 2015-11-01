@@ -70,6 +70,10 @@ class MainPage extends BaseView
           @update()
         else
           @_data.load(checker)
+    @_partials =
+      listItem: (item) ->
+        m 'li',
+          [ m('strong', item.file), ' line ', m('strong', item.line), ': ', item.message ]
 
   handleFail: (error) ->
     @_vm.error = error
@@ -97,7 +101,6 @@ class MainPage extends BaseView
             m 'button.accordion-header', onclick: @_vm.toggleGroup.bind(null, checker), [
               m('span', checker), m('span.badge', @_data.count(checker))
             ]
-            m 'ul.data', @_data.data(checker).sort(byFile).map (item) ->
-              m 'li', JSON.stringify(item)
+            m 'ul.data', @_data.data(checker).sort(byFile).map @_partials.listItem
           ]
       ]

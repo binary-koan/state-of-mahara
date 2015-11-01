@@ -95,6 +95,6 @@ module.exports = (stats, contents) ->
   for line, i in contents.split(/\r|\r?\n/)
     for regex, i in mochikitRegexes
       if regex.test(line)
-        results.push line: i, function: mochikitFunctions[i]
+        results.push line: i, level: 'error', message: "Usage of function #{mochikitFunctions[i]})"
 
   results
