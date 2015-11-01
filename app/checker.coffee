@@ -37,6 +37,8 @@ class Checker
 
   _checkLatest: ->
     model.findLatestRevision (rev) =>
+      @_revision = rev
+
       model.hasData rev, (exists) =>
         if exists
           console.log('Data already exists')
