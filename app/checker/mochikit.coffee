@@ -45,9 +45,9 @@ mochikitFunctions = [
   "truncToFixed(","twoDigitAverage(","twoDigitFloat("
 
   # Iter
-  "applymap(","chain(","count(","cycle(","dropwhile(","every(","exhaust(","forEach(","groupby(",
+  "applymap(","chain(","cycle(","dropwhile(","every(","exhaust(","forEach(","groupby(",
   "groupby_as_array(","iextend(","ifilter(","ifilterfalse(","imap(","islice(","iter(","izip(",
-  "list(","next(","range(","reduce(","registerIteratorFactory(","repeat(","reversed(","some(",
+  "next(","range(","reduce(","registerIteratorFactory(","repeat(","reversed(","some(",
   "sorted(","sum(","takewhile(","tee("
 
   # Logging
@@ -86,7 +86,7 @@ mochikitFunctions = [
 ]
 
 mochikitRegexes = mochikitFunctions.map (fn) ->
-  new RegExp('[^\\.>\\$]\\b' + fn.replace(/[\.\(]/, '\\$1'))
+  new RegExp('[^\\.>\\$_]\\b' + fn.replace(/([\.\(])/, '\\$1'))
 
 module.exports = (stats, contents) ->
   return unless /\.php|js/.test stats.name
