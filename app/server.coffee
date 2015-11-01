@@ -30,7 +30,7 @@ io.on 'connection', (socket) ->
     Checker.run forceUpdate: true, callback: dataCallback
 
   socket.on 'getCheckers', ->
-    model.getCheckers currentRevision, (checkers) ->
+    model.getCheckers (checkers) ->
       socket.emit 'checkers', { checkers }
 
   socket.on 'load', ({ checker }) ->

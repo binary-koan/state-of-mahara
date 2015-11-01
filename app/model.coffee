@@ -3,70 +3,47 @@ fs = require 'fs'
 path = require 'path'
 Datastore = require 'nedb'
 
+checkers = require './checker/index'
+
 DATAROOT = path.resolve(process.env.OPENSHIFT_DATA_DIR || "#{__dirname}/../.data")
 baseDb = new Datastore(filename: DATAROOT + '/db/data.db', autoload: true)
-cache = { revision: null, db: null, checkers: null }
+
+latestRevision = null
+cache = { revision: null, db: null }
 
 filenameForRevision = (revision) -> "#{DATAROOT}/db/#{revision}.db"
 
 revisionDatabase = (revision) -> db = new Datastore(filename: filenameForRevision(revision), autoload: true)
 
-findInFile = (revision, checker, callback) ->
-  db = revisionDatabase(revision)
-  cache = { revision, db }
-  findCheckerData db, checker, callback
+ensureCache = (revision) ->
+  unless cache.revision == revision
+    cache = { revision: revision, db: revisionDatabase(revision) }
 
-findCheckerData = (db, checker, callback) ->
-  db.find { checker }, (err, docs) -> callback docs
-
-exports.getCheckers = (revision, callback) ->
-  db = null
-
-  if cache.revision == revision
-    if cache.checkers
-      callback cache.checkers
-      return
-    else
-      db = cache.db
+ensureLatestRevision = (revision, callback) ->
+  if latestRevision == revision
+    callback()
   else
-    db = revisionDatabase(revision)
+    latestRevision = revision
+    baseDb.update { key: 'revisions' }, { $set: { latest: revision } }, upsert: true, callback
 
-  db.find {}, (err, docs) ->
-    checkers = new Set(map(docs, (doc) -> doc.checker))
-    checkersWithCount = {}
+exports.getCheckers = (callback) ->
+  callback Object.keys(checkers)
 
-    remainingOperations = checkers.size
-    countCallback = (checker, err, count) ->
-      checkersWithCount[checker] = count
-      remainingOperations -= 1
-      if remainingOperations == 0
-        callback(checkersWithCount)
-
-    checkers.forEach (checker) ->
-      db.count { checker }, countCallback.bind(null, checker)
+exports.hasData = (revision, callback) ->
+  fs.exists filenameForRevision(revision), callback
 
 exports.findData = (revision, checker, callback) ->
-  if cache.revision == revision
-    findCheckerData cache.db, checker, callback
-    return
-
-  filename = filenameForRevision(revision)
-  fs.exists filename, (exists) ->
-    if exists
-      findInFile revision, checker, callback
-    else
-      callback null
+  ensureCache revision
+  cache.db.find { checker }, (err, docs) -> callback docs
 
 exports.findLatestRevision = (callback) ->
-  baseDb.findOne { key: 'revisions' }, (err, doc) -> callback doc?.latest
+  if latestRevision
+    callback latestRevision
+  else
+    baseDb.findOne { key: 'revisions' }, (err, doc) -> callback doc?.latest
 
 exports.save = (revision, data, callback) ->
-  filename = filenameForRevision(revision)
-  fs.unlinkSync(filename) if fs.existsSync(filename)
-
-  db = new Datastore(filename: filename, autoload: true)
-  db.insert data, ->
-    cache = { revision, db }
-    baseDb.update { key: 'revisions' }, { $set: { latest: revision } }, upsert: true, callback
+  ensureCache revision
+  cache.db.insert data, ensureLatestRevision.bind(null, revision, callback)
 
 exports.DATAROOT = DATAROOT
