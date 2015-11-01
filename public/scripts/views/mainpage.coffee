@@ -25,11 +25,13 @@ class DataManager extends SocketManager
   revision: -> @_revision
   checkers: -> Object.keys(@_checkers)
   count: (checker) -> @_checkers[checker]
-  data: (checker) ->
+  filenames: (checker) ->
     if @_current.checker == checker && @_current.data
-      @_current.data
+      Object.keys(@_current.data)
     else
       []
+  data: (filename) ->
+    @_current.data[filename]
 
   load: (checker) -> @emit 'load', { checker }
   clearCurrentData: -> @_current = { checker: null, data: null }
@@ -65,15 +67,21 @@ class MainPage extends BaseView
       error: null
       progress: 'Waiting for connection'
       toggleGroup: (checker) =>
-        if @_data.data(checker).length
+        if @_data.filenames(checker).length
           @_data.clearCurrentData()
           @update()
         else
           @_data.load(checker)
+
+    sortByLine = (o1, o2) -> o1.line - o2.line
+
     @_partials =
-      listItem: (item) ->
-        m 'li',
-          [ m('strong', item.file), ' line ', m('strong', item.line), ': ', item.message ]
+      listItem: (filename) =>
+        m 'li', [
+          m 'span.title', filename
+          m 'ul', @_data.data(filename).sort(sortByLine).map (item) ->
+            m 'li', [ 'Line ', m('strong', item.line), ': ', item.message ]
+        ]
 
   handleFail: (error) ->
     @_vm.error = error
@@ -87,7 +95,6 @@ class MainPage extends BaseView
 
   content: ->
     checkers = @_data.checkers()
-    byFile = (o1, o2) -> o1.file.localeCompare(o2.file)
 
     if @_vm.error
       m '.message.error', @_vm.error
@@ -101,6 +108,6 @@ class MainPage extends BaseView
             m 'button.accordion-header', onclick: @_vm.toggleGroup.bind(null, checker), [
               m('span', checker), m('span.badge', @_data.count(checker))
             ]
-            m 'ul.data', @_data.data(checker).sort(byFile).map @_partials.listItem
+            m 'ul.data', @_data.filenames(checker).sort().map @_partials.listItem
           ]
       ]

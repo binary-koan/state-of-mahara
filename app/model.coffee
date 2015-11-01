@@ -47,7 +47,12 @@ exports.hasData = (revision, callback) ->
 
 exports.findData = (revision, checker, callback) ->
   ensureCache revision
-  cache.db.find { checker }, (err, docs) -> callback docs
+  cache.db.find { checker }, (err, docs) ->
+    perFileData = {}
+    for doc in docs
+      perFileData[doc.file] ?= []
+      perFileData[doc.file].push doc
+    callback(perFileData)
 
 exports.findLatestRevision = (callback) ->
   if latestRevision

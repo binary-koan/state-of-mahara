@@ -27,7 +27,3 @@ button.accordion-header span.badge {
   display: inline-block;
   float: right;
 }
-
-ul.data li {
-  list-style-type: none;
-}
