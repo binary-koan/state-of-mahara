@@ -7,16 +7,16 @@ argv = require('yargs')
   .usage('Usage: $0 [options] [<pattern>]')
   .boolean('u')
   .alias('u', 'update')
-  .describe('f', 'Clone the latest Mahara instead of using the last set of results')
+  .describe('u', 'Clone the latest Mahara instead of using the last set of results')
   .help('help')
   .argv
 
 if argv._.length > 0
-  filenameRegex = globToRegExp(argv._[0])
+  filenameRegex = globToRegExp(argv._[0].replace("**/*", "*"))
 
 displayIssues = (files) ->
   for filename in Object.keys(files).sort()
-    break if !filenameRegex || !filenameRegex.test(filename)
+    continue if filenameRegex && !filenameRegex.test(filename)
 
     console.log(filename)
     for error in files[filename]

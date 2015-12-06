@@ -27,6 +27,7 @@ class Checker
     @_data = []
 
     if forceUpdate
+
       @_start()
     else
       @_checkLatest()
@@ -68,13 +69,13 @@ class Checker
       @_commitMessage = JSON.parse(body).message
 
       if @_alreadyClonedRevision()
-        @_checkCurrentClone()
+        @_finish()
       else
         @_cloneLatest @_checkCurrentClone.bind(this)
 
   _cloneLatest: (callback) ->
     rimraf MAHARA_DIR, =>
-      @_invokeCallbacks(progress: 'Cloning Mahara')
+      @_invokeCallbacks(progress: 'Cloning Mahara ...')
 
       exec "git clone --depth 1 https://github.com/MaharaProject/mahara.git #{MAHARA_DIR}", (err, stdout, stderr) =>
         if err
@@ -99,7 +100,7 @@ class Checker
 
     walker.on 'file', (root, stats, next) =>
       fs.readFile path.join(root, stats.name), 'utf8', (err, contents) =>
-        filename = path.join(root, stats.name).replace(MAHARA_DIR, '').replace('\\', '/')
+        filename = path.join(root, stats.name).replace(MAHARA_DIR, '').replace(/\\/g, '/')
         for name, checker of checkers
           @_addData name, filename, checker(stats, contents), fileCallback(next)
 
