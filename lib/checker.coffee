@@ -23,7 +23,6 @@ class Checker
       Checker.instance = new Checker(callbacks, { forceUpdate })
 
   constructor: (callbacks, { forceUpdate }) ->
-    console.log('Starting checker')
     @_callbacks = callbacks
     @_data = []
 
@@ -41,10 +40,8 @@ class Checker
 
       model.hasData rev, (exists) =>
         if exists
-          console.log('Data already exists')
           @_finish()
         else
-          console.log('No data, rechecking')
           @_start()
 
   _start: ->
@@ -60,18 +57,23 @@ class Checker
 
   _checkRevision: (result) ->
     @_revision = result.object?.sha
-    console.log('Starting checker: ' + @_revision)
 
     if not @_revision
-      @_finish('Request for latest revision failed')
-    else if @_alreadyClonedRevision()
-      @_checkCurrentClone()
-    else
-      @_cloneLatest @_checkCurrentClone.bind(this)
+      return @_finish('Request for latest revision failed')
+
+    request {
+      url: result.object.url,
+      headers: { 'User-Agent': 'request' }
+    }, (err, response, body) =>
+      @_commitMessage = JSON.parse(body).message
+
+      if @_alreadyClonedRevision()
+        @_checkCurrentClone()
+      else
+        @_cloneLatest @_checkCurrentClone.bind(this)
 
   _cloneLatest: (callback) ->
     rimraf MAHARA_DIR, =>
-      console.log('Cloning Mahara')
       @_invokeCallbacks(progress: 'Cloning Mahara')
 
       exec "git clone --depth 1 https://github.com/MaharaProject/mahara.git #{MAHARA_DIR}", (err, stdout, stderr) =>
@@ -85,7 +87,6 @@ class Checker
     fs.existsSync(filename) && fs.readFileSync(filename, 'utf8').trim() == @_revision
 
   _checkCurrentClone: ->
-    console.log('Checking clone')
     walker = walk MAHARA_DIR, followLinks: false
 
     files = 0
@@ -98,7 +99,7 @@ class Checker
 
     walker.on 'file', (root, stats, next) =>
       fs.readFile path.join(root, stats.name), 'utf8', (err, contents) =>
-        filename = path.join(root, stats.name).replace MAHARA_DIR, ''
+        filename = path.join(root, stats.name).replace(MAHARA_DIR, '').replace('\\', '/')
         for name, checker of checkers
           @_addData name, filename, checker(stats, contents), fileCallback(next)
 
@@ -106,7 +107,6 @@ class Checker
 
   _addData: (checker, filename, result, callback) ->
     if result && result.length > 0
-      console.log('Adding data: ' + filename)
       data = []
       for item in result
         data.push assign({ checker: checker, file: filename }, item)
@@ -118,9 +118,8 @@ class Checker
     callback(data) for callback in @_callbacks
 
   _finish: (err) ->
-    console.log('Finishing: ' + err)
     if err
       @_invokeCallbacks error: err
     else
-      @_invokeCallbacks complete: true, revision: @_revision
+      @_invokeCallbacks complete: true, revision: @_revision, message: @_commitMessage
     @_complete = true

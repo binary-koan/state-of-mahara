@@ -26,28 +26,12 @@ ensureLatestRevision = (revision, callback) ->
     latestRevision = revision
     baseDb.update { key: 'revisions' }, { $set: { latest: revision } }, upsert: true, callback
 
-exports.getCheckers = (revision, callback) ->
-  ensureCache(revision)
-
-  checkerNames = Object.keys(checkers)
-  checkerCounts = {}
-
-  remaining = checkerNames.length
-  countCallback = (checker, err, count) ->
-    checkerCounts[checker] = count
-    remaining -= 1
-    if remaining == 0
-      callback(checkerCounts)
-
-  for checker in checkerNames
-    cache.db.count { checker }, countCallback.bind(null, checker)
-
 exports.hasData = (revision, callback) ->
   fs.exists filenameForRevision(revision), callback
 
-exports.findData = (revision, checker, callback) ->
+exports.findData = (revision, callback) ->
   ensureCache revision
-  cache.db.find { checker }, (err, docs) ->
+  cache.db.find {}, (err, docs) ->
     perFileData = {}
     for doc in docs
       perFileData[doc.file] ?= []
