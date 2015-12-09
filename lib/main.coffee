@@ -1,8 +1,6 @@
 Checker = require './checker'
 model = require './model'
 
-globToRegExp = require 'glob-to-regexp'
-
 argv = require('yargs')
   .usage('Usage: $0 [options] <path/to/mahara> [<filter/pattern>]')
   .demand(1)
@@ -15,7 +13,12 @@ argv = require('yargs')
 maharaPath = argv._[0]
 
 if argv._.length > 1
-  filenameRegex = globToRegExp(argv._[1].replace("**/*", "*"))
+  filenameRegex = new RegExp(
+    argv._[1]
+      .replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
+      .replace("\\/\\*\\*\\/", "\\/.*")
+      .replace("\\*", "[^\\/]*")
+  )
 
 displayIssues = (files) ->
   for filename in Object.keys(files).sort()
