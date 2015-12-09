@@ -2,8 +2,6 @@
 fs = require 'fs'
 { assign, attempt, isArray, isError } = require 'lodash'
 path = require 'path'
-request = require 'request'
-rimraf = require 'rimraf'
 { walk } = require 'walk'
 
 model = require './model'
