@@ -9,98 +9,56 @@ rimraf = require 'rimraf'
 model = require './model'
 checkers = require './checker/index'
 
-MAHARA_DIR = path.resolve("#{model.DATAROOT}/mahara")
-
 module.exports =
 class Checker
   @instance = null
 
-  @run: ({ forceUpdate, callback }) ->
-    callbacks = [callback]
-    if Checker.instance && !Checker.instance.complete
-      Checker.instance.addCallbacks(callbacks)
-    else
-      Checker.instance = new Checker(callbacks, { forceUpdate })
+  @run: (config) ->
+    new Checker(config).run()
 
-  constructor: (callbacks, { forceUpdate }) ->
-    @_callbacks = callbacks
-    @_data = []
+  constructor: ({ path, forceUpdate, callback }) ->
+    @_path = path
+    @_options = { forceUpdate }
+    @_callback = callback
 
-    if forceUpdate
+  run: ->
+    @_findRevision (revision) =>
+      @_revision = revision.trim()
 
-      @_start()
-    else
-      @_checkLatest()
-
-  addCallbacks: (callbacks) ->
-    @_callbacks = @_callbacks.concat callbacks
-
-  _checkLatest: ->
-    model.findLatestRevision (rev) =>
-      @_revision = rev
-
-      model.hasData rev, (exists) =>
-        if exists
-          @_finish()
-        else
-          @_start()
-
-  _start: ->
-    request {
-      url: 'https://api.github.com/repos/MaharaProject/mahara/git/refs/heads/master'
-      headers: { 'User-Agent': 'request' }
-    }, (err, response, body) =>
-      result = attempt(JSON.parse, body)
-      if isError(result)
-        @_finish('Error parsing JSON: ' + result)
-
-      @_checkRevision(result)
-
-  _checkRevision: (result) ->
-    @_revision = result.object?.sha
-
-    if not @_revision
-      return @_finish('Request for latest revision failed')
-
-    request {
-      url: result.object.url,
-      headers: { 'User-Agent': 'request' }
-    }, (err, response, body) =>
-      @_commitMessage = JSON.parse(body).message
-
-      if @_alreadyClonedRevision()
-        @_finish()
+      if @_options.forceUpdate
+        @_checkRevision()
       else
-        @_cloneLatest @_checkCurrentClone.bind(this)
+        @_checkExistingData()
 
-  _cloneLatest: (callback) ->
-    rimraf MAHARA_DIR, =>
-      @_invokeCallbacks(progress: 'Cloning Mahara ...')
+  _findRevision: (callback) ->
+    exec "cd #{@_path} && git log --format=%H -n 1 HEAD", (err, stdout, stderr) =>
+      callback(stdout)
 
-      exec "git clone --depth 1 https://github.com/MaharaProject/mahara.git #{MAHARA_DIR}", (err, stdout, stderr) =>
-        if err
-          @_invokeCallbacks(error: "git clone failed. STDOUT #{stdout}; STDERR #{stderr}")
-        else
-          callback()
+  _checkExistingData: ->
+    if model.hasData(@_revision)
+      @_finish()
+    else
+      @_checkRevision(@_revision)
 
-  _alreadyClonedRevision: ->
-    filename = "#{MAHARA_DIR}/.git/refs/heads/master"
-    fs.existsSync(filename) && fs.readFileSync(filename, 'utf8').trim() == @_revision
+  _checkRevision: ->
+    exec "cd #{@_path} && git log --format=%H -n 1 HEAD", (err, stdout, stderr) =>
+      @_commitMessage = stdout
+      @_runChecker()
 
-  _checkCurrentClone: ->
-    walker = walk MAHARA_DIR, followLinks: false
+  _runChecker: ->
+    walker = walk @_path, followLinks: false
 
     files = 0
     fileCallback = (next) =>
       files += 1
       if files % 100 == 0
-        => @_invokeCallbacks(progress: "Scanning ... #{files} files checked"); next()
+        => @_callback(progress: "Scanning ... #{files} files checked"); next()
       else
         next
 
     walker.on 'file', (root, stats, next) =>
       fs.readFile path.join(root, stats.name), 'utf8', (err, contents) =>
-        filename = path.join(root, stats.name).replace(MAHARA_DIR, '').replace(/\\/g, '/')
+        filename = path.join(root, stats.name).replace(@_path, '').replace(/\\/g, '/')
         for name, checker of checkers
           @_addData name, filename, checker(stats, contents), fileCallback(next)
 
@@ -115,12 +73,9 @@ class Checker
     else
       callback()
 
-  _invokeCallbacks: (data) ->
-    callback(data) for callback in @_callbacks
-
   _finish: (err) ->
     if err
-      @_invokeCallbacks error: err
+      @_callback error: err
     else
-      @_invokeCallbacks complete: true, revision: @_revision, message: @_commitMessage
+      @_callback complete: true, revision: @_revision, message: @_commitMessage
     @_complete = true

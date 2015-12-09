@@ -4,15 +4,18 @@ model = require './model'
 globToRegExp = require 'glob-to-regexp'
 
 argv = require('yargs')
-  .usage('Usage: $0 [options] [<pattern>]')
+  .usage('Usage: $0 [options] <path/to/mahara> [<filter/pattern>]')
+  .demand(1)
   .boolean('u')
   .alias('u', 'update')
-  .describe('u', 'Clone the latest Mahara instead of using the last set of results')
+  .describe('u', 'Delete any old data for this revision and rebuild')
   .help('help')
   .argv
 
-if argv._.length > 0
-  filenameRegex = globToRegExp(argv._[0].replace("**/*", "*"))
+maharaPath = argv._[0]
+
+if argv._.length > 1
+  filenameRegex = globToRegExp(argv._[1].replace("**/*", "*"))
 
 displayIssues = (files) ->
   for filename in Object.keys(files).sort()
@@ -23,10 +26,11 @@ displayIssues = (files) ->
       console.log("  Line #{error.line}: #{error.message}")
     console.log("")
 
-Checker.run forceUpdate: argv.update, callback: (data) ->
+new Checker(path: maharaPath, forceUpdate: argv.update, callback: (data) ->
   if data.error
     console.log("Failed: #{data.error}")
   else if data.progress
     console.log(data.progress)
   else if data.complete
     model.findData data.revision, displayIssues
+).run()

@@ -19,15 +19,8 @@ ensureCache = (revision) ->
   unless cache.revision == revision
     cache = { revision: revision, db: revisionDatabase(revision) }
 
-ensureLatestRevision = (revision, callback) ->
-  if latestRevision == revision
-    callback()
-  else
-    latestRevision = revision
-    baseDb.update { key: 'revisions' }, { $set: { latest: revision } }, upsert: true, callback
-
-exports.hasData = (revision, callback) ->
-  fs.exists filenameForRevision(revision), callback
+exports.hasData = (revision) ->
+  fs.existsSync filenameForRevision(revision)
 
 exports.findData = (revision, callback) ->
   ensureCache revision
@@ -38,14 +31,9 @@ exports.findData = (revision, callback) ->
       perFileData[doc.file].push doc
     callback(perFileData)
 
-exports.findLatestRevision = (callback) ->
-  if latestRevision
-    callback latestRevision
-  else
-    baseDb.findOne { key: 'revisions' }, (err, doc) -> callback doc?.latest
-
 exports.save = (revision, data, callback) ->
   ensureCache revision
-  cache.db.insert data, ensureLatestRevision.bind(null, revision, callback)
+  cache.db.remove {}, {}, ->
+    cache.db.insert data, callback
 
 exports.DATAROOT = DATAROOT
