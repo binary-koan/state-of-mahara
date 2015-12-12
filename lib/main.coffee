@@ -21,19 +21,22 @@ if argv._.length > 1
   )
 
 displayIssues = (files) ->
-  for filename in Object.keys(files).sort()
-    continue if filenameRegex && !filenameRegex.test(filename)
+  issues = 0
+  Object.keys(files).sort().forEach (filename) ->
+    return if filenameRegex && !filenameRegex.test(filename)
 
     console.log(filename)
-    for error in files[filename]
+    files[filename].forEach (error) ->
+      issues += 1
       console.log("  Line #{error.line}: #{error.message}")
     console.log("")
 
-new Checker(path: maharaPath, forceUpdate: argv.update, callback: (data) ->
+  console.log("#{issues} issues.")
+
+Checker.run path: maharaPath, forceUpdate: argv.update, callback: (data) ->
   if data.error
     console.log("Failed: #{data.error}")
   else if data.progress
     console.log(data.progress)
   else if data.complete
     model.findData data.revision, displayIssues
-).run()
