@@ -1,14 +1,17 @@
 {
   "name": "state-of-mahara",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Utility to detect problems in the Mahara codebase",
+  "bin": {
+    "state-of-mahara": "./bin/state-of-mahara"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node bin/state-of-mahara"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Jono Mingard <reason.koan@gmail.com>",
   "license": "MIT",
+  "keywords": ["php", "mahara", "not-js"],
+  "repository": "binary-koan/state-of-mahara",
   "dependencies": {
     "coffee-script": "^1.10.0",
     "lodash": "^3.10.1",
