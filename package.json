@@ -1,6 +1,6 @@
 {
   "name": "state-of-mahara",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Utility to detect problems in the Mahara codebase",
   "bin": {
     "state-of-mahara": "./bin/state-of-mahara"
