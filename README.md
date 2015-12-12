@@ -1,7 +1,7 @@
 # state-of-mahara
 
 A simple utility to detect problems in the Mahara codebase. Currently this only looks for uses
-of MochiKit functions, but I plan to extend it to look for things like inline <script> tags in PHP
+of MochiKit functions, but I plan to extend it to look for things like inline &lt;script&gt; tags in PHP
 files, functions/classes without documentation comments, excessively long lines/functions/files,
 etc.
 
