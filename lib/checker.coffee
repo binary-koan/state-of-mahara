@@ -1,7 +1,7 @@
 { exec } = require 'child_process'
 fs = require 'fs'
 { assign, attempt, isArray, isError } = require 'lodash'
-path = require 'path'
+nodePath = require 'path'
 { walk } = require 'walk'
 
 model = require './model'
@@ -15,7 +15,7 @@ class Checker
     new Checker(config).run()
 
   constructor: ({ path, forceUpdate, callback }) ->
-    @_path = path
+    @_path = nodePath.resolve(path)
     @_options = { forceUpdate }
     @_callback = callback
 
@@ -44,32 +44,32 @@ class Checker
       @_runChecker()
 
   _runChecker: ->
+    @_issues = []
     walker = walk @_path, followLinks: false
 
     files = 0
-    fileCallback = (next) =>
+    countFile = (next) =>
       files += 1
       if files % 100 == 0
-        => @_callback(progress: "Scanning ... #{files} files checked"); next()
+        @_callback(progress: "Scanning ... #{files} files checked")
+        next()
       else
-        next
+        next()
 
     walker.on 'file', (root, stats, next) =>
-      fs.readFile path.join(root, stats.name), 'utf8', (err, contents) =>
-        filename = path.join(root, stats.name).replace(@_path, '').replace(/\\/g, '/')
+      fs.readFile nodePath.join(root, stats.name), 'utf8', (err, contents) =>
+        filename = nodePath.join(root, stats.name).replace(@_path, '').replace(/\\/g, '/')
         for name, checker of checkers
-          @_addData name, filename, checker(stats, contents), fileCallback(next)
+          @_addData name, filename, checker(stats, contents)
+        countFile(next)
 
-    walker.on 'end', @_finish.bind(this)
+    walker.on 'end', =>
+      model.save @_revision, @_issues, @_finish.bind(this)
 
-  _addData: (checker, filename, result, callback) ->
+  _addData: (checker, filename, result) ->
     if result && result.length > 0
-      data = []
       for item in result
-        data.push assign({ checker: checker, file: filename }, item)
-      model.save @_revision, data, callback
-    else
-      callback()
+        @_issues.push assign({ checker: checker, file: filename }, item)
 
   _finish: (err) ->
     if err
