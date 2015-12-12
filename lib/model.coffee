@@ -32,8 +32,8 @@ exports.findData = (revision, callback) ->
     callback(perFileData)
 
 exports.save = (revision, data, callback) ->
-  ensureCache revision
-  cache.db.remove {}, {}, ->
+  fs.unlink filenameForRevision(revision), ->
+    ensureCache revision
     cache.db.insert data, callback
 
 exports.DATAROOT = DATAROOT
