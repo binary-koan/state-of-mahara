@@ -88,13 +88,20 @@ mochikitFunctions = [
 mochikitRegexes = mochikitFunctions.map (fn) ->
   new RegExp('[^\\.>\\$_]\\b' + fn.replace(/([\.\(])/, '\\$1'))
 
+phpFileWithScriptTag = (name, lines) ->
+  isPhpFile = /\.php$/.test(name)
+  isPhpFile && lines.filter((line) -> /<script|js =/.test(line)).length > 0
+
 module.exports = (stats, contents) ->
-  return unless /\.php|js/.test stats.name
+  lines = contents.split(/\n|\r\n/)
+
+  if !/\.js$/.test(stats.name)
+    return unless phpFileWithScriptTag(stats.name, lines)
 
   results = []
-  for line, i in contents.split(/\r|\r?\n/)
+  for line, i in lines
     for regex, i in mochikitRegexes
       if regex.test(line)
-        results.push line: i, level: 'error', message: "Usage of function #{mochikitFunctions[i]})"
+        results.push(line: i, level: 'error', message: "Usage of function #{mochikitFunctions[i]})")
 
   results
