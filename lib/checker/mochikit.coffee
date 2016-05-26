@@ -25,10 +25,7 @@ mochikitFunctions = [
   "registerDOMConverter(","removeElement(","removeElementClass(","removeEmptyTextNodes(",
   "replaceChildNodes(","scrapeText(","setElementClass(","setNodeAttribute(","swapDOM(",
   "swapElementClass(","toggleElementClass(","toHTML(","updateNodeAttributes(","withWindow(",
-  "withDocument(","computedStyle(","elementDimensions(","elementPosition(","getViewportDimensions(",
-  "hideElement(","makeClipping(","makePositioned(","setElementDimensions(","setElementPosition(",
-  "setDisplayForElement(","setOpacity(","showElement(","undoClipping(","undoPositioned(",
-  "Coordinates(","Dimensions("
+  "withDocument(","computedStyle(","elementDimensions(","elementPosition("
 
   # DragDrop
   "Draggable(","Droppable("
@@ -90,7 +87,7 @@ mochikitRegexes = mochikitFunctions.map (fn) ->
 
 phpFileWithScriptTag = (name, lines) ->
   isPhpFile = /\.php$/.test(name)
-  isPhpFile && lines.filter((line) -> /<script|js =/.test(line)).length > 0
+  isPhpFile && lines.filter((line) -> /<script|js|<<<EOF =/.test(line)).length > 0
 
 module.exports = (stats, contents) ->
   lines = contents.split(/\n|\r\n/)
@@ -100,8 +97,7 @@ module.exports = (stats, contents) ->
 
   results = []
   for line, i in lines
-    for regex, i in mochikitRegexes
+    for regex, r in mochikitRegexes
       if regex.test(line)
-        results.push(line: i, level: 'error', message: "Usage of function #{mochikitFunctions[i]})")
-
+        results.push(line: i, level: 'error', message: "Usage of function #{mochikitFunctions[r]})")
   results
