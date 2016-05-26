@@ -26,7 +26,9 @@ displayIssues = (files) ->
     return if filenameRegex && !filenameRegex.test(filename)
 
     console.log(filename)
-    files[filename].forEach (error) ->
+    
+    errors = files[filename].sort (a, b) -> a.line - b.line
+    errors.forEach (error) ->
       issues += 1
       console.log("  Line #{error.line}: #{error.message}")
     console.log("")
